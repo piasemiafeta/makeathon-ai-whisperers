@@ -1,13 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.charting import infer_chart_spec
 from app.database import DB_PATH, METRICS_PATH, SCHEMA_PATH, read_text_file, run_sql
 from app.models import AskRequest, AskResponse, QueryRequest, QueryResponse
-from app.planner import temporary_question_to_sql
 from app.sql_guard import ALLOWED_TABLES, validate_select_sql
 from app.llm_planner import generate_dashboard_plan
-
+import os
 
 app = FastAPI(
     title="NR2Dashboard API",
@@ -15,9 +13,11 @@ app = FastAPI(
     version="0.2.0",
 )
 
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Later: restrict to React frontend URL
+    allow_origins=[FRONTEND_ORIGIN],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
