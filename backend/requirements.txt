@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+duckdb
+pandas
+pydantic
+python-dotenv
+sqlparse
+groq
+python-dotenv
