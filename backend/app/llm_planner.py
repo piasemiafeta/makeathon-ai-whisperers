@@ -30,7 +30,7 @@ def _extract_json(text: str) -> dict[str, Any]:
     return json.loads(text[start:end + 1])
 
 
-def generate_dashboard_plan(question: str) -> dict[str, Any]:
+def generate_dashboard_plan(question: str, history_context: str | None = None) -> dict[str, Any]:
     schema = read_text_file(SCHEMA_PATH)
     metrics = read_text_file(METRICS_PATH)
 
@@ -99,6 +99,11 @@ Rules:
 
 - When calculating rates, return percentages by multiplying by 100.0 and use aliases ending in _pct, e.g. escalation_rate_pct, containment_rate_pct, failure_rate_pct.
 - Do not call a decimal value like 0.11 a percentage. If the explanation says percentage, the SQL must multiply by 100.0.
+
+- You may receive previous conversation context. Use it only when the current question is a follow-up.
+- Follow-up examples include: "make it a bar chart", "show it by region", "κάν' το line chart", "δείξε το ανά περιοχή".
+- If the user asks to change only the chart type, keep the previous SQL logic when appropriate and only change the chart spec.
+- If the user asks to change the grouping/dimension, generate a new SQL query using the same metric or topic from the previous turn.
 
 Examples:
 
@@ -178,11 +183,14 @@ Required JSON shape:
 """
 
     user_prompt = f"""
-User question:
-{question}
+    Previous conversation context:
+    {history_context or "No previous conversation context."}
 
-Return only valid JSON.
-"""
+    Current user question:
+    {question}
+
+    Return only valid JSON.
+    """
 
     response = client.chat.completions.create(
         model=MODEL,

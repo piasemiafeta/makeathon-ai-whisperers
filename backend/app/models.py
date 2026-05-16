@@ -15,7 +15,10 @@ class QueryResponse(BaseModel):
 
 class AskRequest(BaseModel):
     question: str = Field(..., description="Natural-language user question.")
-
+    session_id: str | None = Field(
+        default=None,
+        description="Optional conversation session id for follow-up questions.",
+    )
 
 class ChartSpec(BaseModel):
     chart_type: str
@@ -28,9 +31,18 @@ class ChartSpec(BaseModel):
 
 class AskResponse(BaseModel):
     question: str
+    session_id: str
     sql: str
     chart: ChartSpec
     columns: list[str]
     rows: list[dict[str, Any]]
     row_count: int
     explanation: str
+
+class ResetSessionRequest(BaseModel):
+    session_id: str
+
+
+class ResetSessionResponse(BaseModel):
+    session_id: str
+    reset: bool

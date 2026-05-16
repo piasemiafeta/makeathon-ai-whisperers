@@ -22,7 +22,6 @@ import {
   Code2,
   Copy,
   Check,
-  BarChart3,
 } from "lucide-react";
 import "./App.css";
 
@@ -36,6 +35,7 @@ const EXAMPLE_PROMPTS = [
   "Which regions have the most escalated calls?",
   "How is the bot doing this week?",
 ];
+
 const CHART_COLORS = [
   "#4f46e5",
   "#06b6d4",
@@ -53,6 +53,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copiedSql, setCopiedSql] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
 
   async function askQuestion(customQuestion) {
     const finalQuestion = customQuestion || question;
@@ -70,13 +71,20 @@ function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ question: finalQuestion }),
+        body: JSON.stringify({
+          question: finalQuestion,
+          session_id: sessionId,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.detail || "Something went wrong.");
+      }
+
+      if (data.session_id) {
+        setSessionId(data.session_id);
       }
 
       setResult(data);
@@ -86,6 +94,28 @@ function App() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function resetSession() {
+    if (sessionId) {
+      try {
+        await fetch(`${API_URL}/session/reset`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+      } catch {
+        // Even if backend reset fails, clear local UI state.
+      }
+    }
+
+    setSessionId(null);
+    setQuestion("");
+    setResult(null);
+    setError("");
+    setCopiedSql(false);
   }
 
   function handleSubmit(e) {
@@ -128,6 +158,19 @@ function App() {
               {loading ? "Thinking..." : "Generate dashboard"}
             </button>
           </form>
+
+          <div className="session-actions">
+            <button
+              type="button"
+              className="reset-button"
+              onClick={resetSession}
+              disabled={loading}
+            >
+              Reset conversation
+            </button>
+
+            {sessionId && <p className="session-hint">Follow-up mode active</p>}
+          </div>
 
           <div className="examples">
             <p>Try one:</p>
@@ -175,6 +218,15 @@ function App() {
                   <p className="eyebrow">Question</p>
                   <h2>{result.question}</h2>
                 </div>
+
+                <button
+                  type="button"
+                  className="reset-button small"
+                  onClick={resetSession}
+                  disabled={loading}
+                >
+                  Reset
+                </button>
               </div>
 
               <div className="insight-box">
@@ -281,7 +333,7 @@ function ChartRenderer({ result }) {
                   />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip formatter={(value) => formatTooltipValue(value, yKey)} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -290,7 +342,9 @@ function ChartRenderer({ result }) {
         {chartType === "metric" && (
           <div className="metric-card">
             <span>{yKey || result.columns?.[0]}</span>
-            <strong>{rows[0]?.[yKey] || Object.values(rows[0] || {})[0]}</strong>
+            <strong>
+              {rows[0]?.[yKey] || Object.values(rows[0] || {})[0]}
+            </strong>
           </div>
         )}
 

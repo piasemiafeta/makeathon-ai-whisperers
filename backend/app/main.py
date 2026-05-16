@@ -2,10 +2,24 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import DB_PATH, METRICS_PATH, SCHEMA_PATH, read_text_file, run_sql
-from app.models import AskRequest, AskResponse, QueryRequest, QueryResponse
+from app.models import (
+    AskRequest,
+    AskResponse,
+    QueryRequest,
+    QueryResponse,
+    ResetSessionRequest,
+    ResetSessionResponse,
+)
 from app.sql_guard import ALLOWED_TABLES, validate_select_sql
 from app.llm_planner import generate_dashboard_plan
 import os
+from app.conversation_store import (
+    add_turn,
+    create_session_id,
+    format_history_for_prompt,
+    get_history,
+    reset_session,
+)
 
 app = FastAPI(
     title="NR2Dashboard API",
@@ -130,7 +144,15 @@ def query_database(payload: QueryRequest):
 @app.post("/ask", response_model=AskResponse)
 def ask_question(payload: AskRequest):
     try:
-        plan = generate_dashboard_plan(payload.question)
+        session_id = payload.session_id or create_session_id()
+
+        history = get_history(session_id)
+        history_context = format_history_for_prompt(history)
+
+        plan = generate_dashboard_plan(
+            question=payload.question,
+            history_context=history_context,
+        )
 
         sql = plan["sql"]
         chart = plan["chart"]
@@ -139,8 +161,17 @@ def ask_question(payload: AskRequest):
         validate_select_sql(sql)
         df = run_sql(sql)
 
+        add_turn(
+            session_id=session_id,
+            question=payload.question,
+            sql=sql,
+            chart=chart,
+            explanation=explanation,
+        )
+
         return {
             "question": payload.question,
+            "session_id": session_id,
             "sql": sql,
             "chart": chart,
             "columns": list(df.columns),
@@ -157,3 +188,12 @@ def ask_question(payload: AskRequest):
 
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+    
+@app.post("/session/reset", response_model=ResetSessionResponse)
+def reset_conversation_session(payload: ResetSessionRequest):
+    was_reset = reset_session(payload.session_id)
+
+    return {
+        "session_id": payload.session_id,
+        "reset": was_reset,
+    }
