@@ -22,6 +22,8 @@ import {
   Code2,
   Copy,
   Check,
+  Moon,
+  Sun,
 } from "lucide-react";
 import "./App.css";
 
@@ -57,6 +59,7 @@ function App() {
   const [datasets, setDatasets] = useState([]);
   const [selectedDatasetId, setSelectedDatasetId] = useState("banking_voicebot");
   const [datasetsLoading, setDatasetsLoading] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     async function loadDatasets() {
@@ -124,7 +127,7 @@ function App() {
       }
 
       setResult(data);
-      setQuestion(finalQuestion);
+      setQuestion("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -186,14 +189,26 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${darkMode ? "dark" : ""}`}>   
       <header className="hero">
         <div className="badge">
           <Sparkles size={16} />
           Natural Language to Dashboard
         </div>
+        <div className="hero-title-row">
+          <h1>NR2Dashboard</h1>
 
-        <h1>NR2Dashboard</h1>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={() => setDarkMode((value) => !value)}
+            aria-label="Toggle dark mode"
+          >
+            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            {darkMode ? "Light" : "Dark"}
+          </button>
+        </div>
+
         <p>
           Ask questions in English or Greek and generate live dashboard
           components over the banking voicebot dataset.
