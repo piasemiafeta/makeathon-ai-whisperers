@@ -729,3 +729,11 @@ td {
 .app-shell.dark .stats-grid {
   gap: 16px;
 }
+
+.result-header h2 {
+  color: #111827;
+}
+
+.app-shell.dark .result-header h2 {
+  color: #f8fafc;
+}
