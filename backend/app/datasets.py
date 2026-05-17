@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any
 
@@ -5,8 +6,34 @@ import duckdb
 import pandas as pd
 
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-DATA_DIR = ROOT_DIR / "data"
+APP_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = APP_DIR.parent
+REPO_DIR = BACKEND_DIR.parent
+
+DUCKDB_PATH_ENV = os.getenv("DUCKDB_PATH")
+
+DATA_DIR_CANDIDATES = [
+    BACKEND_DIR / "data",       # Railway, because Root Directory = backend
+    REPO_DIR / "data",          # Local repo root
+    Path.cwd() / "data",        # Current working directory fallback
+    Path("/app/data"),          # Railway-like fallback
+    Path("/app/backend/data"),  # Alternative Railway-like fallback
+]
+
+DATA_DIR = next(
+    (
+        path
+        for path in DATA_DIR_CANDIDATES
+        if (path / "conversations.duckdb").exists()
+    ),
+    BACKEND_DIR / "data",
+)
+
+DATABASE_PATH = (
+    Path(DUCKDB_PATH_ENV)
+    if DUCKDB_PATH_ENV
+    else DATA_DIR / "conversations.duckdb"
+)
 
 DEFAULT_DATASET_ID = "banking_voicebot"
 
@@ -15,7 +42,7 @@ DATASETS: dict[str, dict[str, Any]] = {
         "id": DEFAULT_DATASET_ID,
         "name": "Banking Voicebot Conversations",
         "description": "90-day synthetic dataset with approximately 10,000 banking voicebot conversations.",
-        "database_path": DATA_DIR / "conversations.duckdb",
+        "database_path": DATABASE_PATH,
         "schema_path": DATA_DIR / "schema.md",
         "metrics_path": DATA_DIR / "metrics_dictionary.md",
         "default": True,
