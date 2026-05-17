@@ -1,15 +1,24 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import DB_PATH, METRICS_PATH, SCHEMA_PATH, read_text_file, run_sql
+#from app.database import DB_PATH, METRICS_PATH, SCHEMA_PATH, read_text_file, run_sql
+from app.datasets import (
+    DEFAULT_DATASET_ID,
+    get_dataset_paths,
+    list_datasets,
+    read_text_file,
+    run_sql,
+)
 from app.models import (
     AskRequest,
     AskResponse,
+    DatasetsResponse,
     QueryRequest,
     QueryResponse,
     ResetSessionRequest,
     ResetSessionResponse,
 )
+
 from app.sql_guard import ALLOWED_TABLES, validate_select_sql
 from app.llm_planner import generate_dashboard_plan
 import os
@@ -46,38 +55,56 @@ def root():
         "health": "/health",
     }
 
+@app.get("/datasets", response_model=DatasetsResponse)
+def get_datasets():
+    return {
+        "datasets": list_datasets()
+    }
 
 @app.get("/health")
 def health():
+    paths = get_dataset_paths(DEFAULT_DATASET_ID)
+
     return {
         "status": "ok",
-        "database_found": DB_PATH.exists(),
-        "database_path": str(DB_PATH),
+        "default_dataset_id": DEFAULT_DATASET_ID,
+        "database_found": paths["database_path"].exists(),
+        "database_path": str(paths["database_path"]),
     }
 
 
 @app.get("/schema")
-def get_schema():
+def get_schema(dataset_id: str | None = None):
     try:
+        paths = get_dataset_paths(dataset_id)
+
         return {
-            "schema": read_text_file(SCHEMA_PATH)
+            "dataset_id": dataset_id or DEFAULT_DATASET_ID,
+            "schema": read_text_file(paths["schema_path"]),
         }
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.get("/metrics")
-def get_metrics_dictionary():
+def get_metrics_dictionary(dataset_id: str | None = None):
     try:
+        paths = get_dataset_paths(dataset_id)
+
         return {
-            "metrics_dictionary": read_text_file(METRICS_PATH)
+            "dataset_id": dataset_id or DEFAULT_DATASET_ID,
+            "metrics_dictionary": read_text_file(paths["metrics_path"]),
         }
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.get("/tables")
-def get_tables():
+def get_tables(dataset_id: str | None = None):
     try:
         sql = """
         SELECT table_name
@@ -87,12 +114,15 @@ def get_tables():
         LIMIT 100;
         """
 
-        df = run_sql(sql)
+        df = run_sql(sql, dataset_id)
 
         return {
+            "dataset_id": dataset_id or DEFAULT_DATASET_ID,
             "tables": df["table_name"].tolist()
         }
 
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -159,7 +189,7 @@ def ask_question(payload: AskRequest):
         explanation = plan.get("explanation", "Generated dashboard result.")
 
         validate_select_sql(sql)
-        df = run_sql(sql)
+        df = run_sql(sql, payload.dataset_id)
 
         add_turn(
             session_id=session_id,
@@ -172,6 +202,7 @@ def ask_question(payload: AskRequest):
         return {
             "question": payload.question,
             "session_id": session_id,
+            "dataset_id": payload.dataset_id or DEFAULT_DATASET_ID,
             "sql": sql,
             "chart": chart,
             "columns": list(df.columns),

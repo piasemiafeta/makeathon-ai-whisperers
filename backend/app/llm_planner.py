@@ -5,7 +5,8 @@ from typing import Any
 from dotenv import load_dotenv
 from groq import Groq
 
-from app.database import METRICS_PATH, SCHEMA_PATH, read_text_file
+#from app.database import METRICS_PATH, SCHEMA_PATH, read_text_file
+from app.datasets import DEFAULT_DATASET_ID, get_dataset_paths, read_text_file
 
 
 load_dotenv()
@@ -31,8 +32,9 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 def generate_dashboard_plan(question: str, history_context: str | None = None) -> dict[str, Any]:
-    schema = read_text_file(SCHEMA_PATH)
-    metrics = read_text_file(METRICS_PATH)
+    paths = get_dataset_paths(DEFAULT_DATASET_ID)
+    schema = read_text_file(paths["schema_path"])
+    metrics = read_text_file(paths["metrics_path"])
 
     system_prompt = f"""
 You are an analytics planner for a banking voicebot dashboard.

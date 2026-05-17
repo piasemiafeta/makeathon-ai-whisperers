@@ -19,6 +19,10 @@ class AskRequest(BaseModel):
         default=None,
         description="Optional conversation session id for follow-up questions.",
     )
+    dataset_id: str | None = Field(
+        default=None,
+        description="Optional dataset id. Defaults to the banking voicebot dataset.",
+    )
 
 class ChartSpec(BaseModel):
     chart_type: str
@@ -32,6 +36,7 @@ class ChartSpec(BaseModel):
 class AskResponse(BaseModel):
     question: str
     session_id: str
+    dataset_id: str
     sql: str
     chart: ChartSpec
     columns: list[str]
@@ -46,3 +51,14 @@ class ResetSessionRequest(BaseModel):
 class ResetSessionResponse(BaseModel):
     session_id: str
     reset: bool
+
+class DatasetInfo(BaseModel):
+    id: str
+    name: str
+    description: str
+    default: bool = False
+    database_found: bool = False
+
+
+class DatasetsResponse(BaseModel):
+    datasets: list[DatasetInfo]

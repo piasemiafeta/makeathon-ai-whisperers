@@ -14,7 +14,8 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 
-from backend.app.database import METRICS_PATH, SCHEMA_PATH, read_text_file, run_sql
+#from backend.app.database import METRICS_PATH, SCHEMA_PATH, read_text_file, run_sql
+from backend.app.datasets import DEFAULT_DATASET_ID, get_dataset_paths, list_datasets, read_text_file, run_sql
 from backend.app.llm_planner import generate_dashboard_plan
 from backend.app.sql_guard import validate_select_sql
 
@@ -31,18 +32,14 @@ mcp = FastMCP(
 
 @mcp.tool()
 def get_schema() -> str:
-    """
-    Return the dataset schema markdown.
-    """
-    return read_text_file(SCHEMA_PATH)
+    paths = get_dataset_paths(DEFAULT_DATASET_ID)
+    return read_text_file(paths["schema_path"])
 
 
 @mcp.tool()
 def get_metrics_dictionary() -> str:
-    """
-    Return the metrics dictionary markdown.
-    """
-    return read_text_file(METRICS_PATH)
+    paths = get_dataset_paths(DEFAULT_DATASET_ID)
+    return read_text_file(paths["metrics_path"])
 
 
 @mcp.tool()
@@ -58,7 +55,7 @@ def list_tables() -> dict[str, Any]:
     LIMIT 100;
     """
 
-    df = run_sql(sql)
+    df = run_sql(sql, DEFAULT_DATASET_ID)
 
     return {
         "tables": df["table_name"].tolist()
@@ -72,12 +69,21 @@ def run_sql_query(sql: str) -> dict[str, Any]:
     The query must use allowed views/tables and include LIMIT.
     """
     validate_select_sql(sql)
-    df = run_sql(sql)
+    df = run_sql(sql, DEFAULT_DATASET_ID)
 
     return {
         "columns": list(df.columns),
         "rows": df.to_dict(orient="records"),
         "row_count": len(df),
+    }
+
+@mcp.tool()
+def list_available_datasets() -> dict[str, Any]:
+    """
+    List datasets registered in NR2Dashboard.
+    """
+    return {
+        "datasets": list_datasets()
     }
 
 
@@ -94,7 +100,7 @@ def ask(question: str) -> dict[str, Any]:
     explanation = plan.get("explanation", "Generated dashboard result.")
 
     validate_select_sql(sql)
-    df = run_sql(sql)
+    df = run_sql(sql, DEFAULT_DATASET_ID)
 
     return {
         "question": question,
