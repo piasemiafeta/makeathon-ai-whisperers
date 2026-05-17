@@ -67,12 +67,22 @@ function App() {
 
       try {
         const response = await fetch(`${API_URL}/datasets`);
-        const data = await response.json();
+        const responseText = await response.text();
 
-        if (!response.ok) {
-          throw new Error(data.detail || "Could not load datasets.");
+        let data;
+        try {
+          data = responseText ? JSON.parse(responseText) : {};
+        } catch {
+          throw new Error(
+            `Backend returned non-JSON response. Status: ${response.status}. Body: ${
+              responseText || "empty"
+            }`
+          );
         }
 
+        if (!response.ok) {
+          throw new Error(data.detail || `Request failed with status ${response.status}`);
+      }
         const availableDatasets = data.datasets || [];
         setDatasets(availableDatasets);
 
