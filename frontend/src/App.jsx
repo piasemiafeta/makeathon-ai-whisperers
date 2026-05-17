@@ -81,8 +81,11 @@ function App() {
         }
 
         if (!response.ok) {
-          throw new Error(data.detail || `Request failed with status ${response.status}`);
-      }
+          throw new Error(
+            data.detail || `Request failed with status ${response.status}`
+          );
+        }
+
         const availableDatasets = data.datasets || [];
         setDatasets(availableDatasets);
 
@@ -95,6 +98,7 @@ function App() {
         }
       } catch (err) {
         console.error(err);
+        setError(err.message);
       } finally {
         setDatasetsLoading(false);
       }
@@ -126,10 +130,23 @@ function App() {
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+
+      let data;
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        throw new Error(
+          `Backend returned non-JSON response. Status: ${response.status}. Body: ${
+            responseText || "empty"
+          }`
+        );
+      }
 
       if (!response.ok) {
-        throw new Error(data.detail || "Something went wrong.");
+        throw new Error(
+          data.detail || `Request failed with status ${response.status}`
+        );
       }
 
       if (data.session_id) {
@@ -199,12 +216,13 @@ function App() {
   }
 
   return (
-    <div className={`app-shell ${darkMode ? "dark" : ""}`}>   
+    <div className={`app-shell ${darkMode ? "dark" : ""}`}>
       <header className="hero">
         <div className="badge">
           <Sparkles size={16} />
           Natural Language to Dashboard
         </div>
+
         <div className="hero-title-row">
           <h1>NR2Dashboard</h1>
 
@@ -231,6 +249,7 @@ function App() {
             <Database size={18} />
             Ask your data
           </div>
+
           <div className="dataset-selector">
             <label htmlFor="dataset-select">Dataset</label>
 
@@ -248,7 +267,7 @@ function App() {
 
               {datasets.map((dataset) => (
                 <option key={dataset.id} value={dataset.id}>
-                {dataset.name}
+                  {dataset.name}
                 </option>
               ))}
             </select>
@@ -256,10 +275,11 @@ function App() {
             {datasets.length > 0 && (
               <p>
                 {datasets.find((dataset) => dataset.id === selectedDatasetId)
-                ?.description || "Selected dataset"}
+                  ?.description || "Selected dataset"}
               </p>
             )}
           </div>
+
           <form onSubmit={handleSubmit} className="ask-form">
             <textarea
               value={question}
@@ -491,7 +511,7 @@ function ResultStats({ result }) {
         <span>Visualization</span>
         <strong>{chartType}</strong>
       </div>
-          
+
       <div className="stat-card">
         <span>Dataset</span>
         <strong className="dataset-stat">{datasetId}</strong>
