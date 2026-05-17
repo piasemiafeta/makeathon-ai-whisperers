@@ -381,7 +381,7 @@ td {
 .stats-grid {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px;
 }
 
@@ -482,4 +482,52 @@ td {
   color: #536dfe;
   font-size: 13px;
   font-weight: 800;
+}
+
+.dataset-selector {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid #e1e7f0;
+}
+
+.dataset-selector label {
+  display: block;
+  margin-bottom: 8px;
+  color: #5a6680;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 900;
+}
+
+.dataset-selector select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #d7deea;
+  border-radius: 14px;
+  background: white;
+  color: #172033;
+  padding: 0 12px;
+  font: inherit;
+  font-weight: 700;
+  outline: none;
+}
+
+.dataset-selector select:focus {
+  border-color: #536dfe;
+  box-shadow: 0 0 0 4px rgba(83, 109, 254, 0.12);
+}
+
+.dataset-selector p {
+  margin: 8px 0 0;
+  color: #6b7890;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.dataset-stat {
+  font-size: 17px !important;
+  word-break: break-word;
 }

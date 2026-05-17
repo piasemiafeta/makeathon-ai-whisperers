@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -54,6 +54,41 @@ function App() {
   const [error, setError] = useState("");
   const [copiedSql, setCopiedSql] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [datasets, setDatasets] = useState([]);
+  const [selectedDatasetId, setSelectedDatasetId] = useState("banking_voicebot");
+  const [datasetsLoading, setDatasetsLoading] = useState(false);
+
+  useEffect(() => {
+    async function loadDatasets() {
+      setDatasetsLoading(true);
+
+      try {
+        const response = await fetch(`${API_URL}/datasets`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || "Could not load datasets.");
+        }
+
+        const availableDatasets = data.datasets || [];
+        setDatasets(availableDatasets);
+
+        const defaultDataset =
+          availableDatasets.find((dataset) => dataset.default) ||
+          availableDatasets[0];
+
+        if (defaultDataset?.id) {
+          setSelectedDatasetId(defaultDataset.id);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setDatasetsLoading(false);
+      }
+    }
+
+    loadDatasets();
+  }, []);
 
   async function askQuestion(customQuestion) {
     const finalQuestion = customQuestion || question;
@@ -74,6 +109,7 @@ function App() {
         body: JSON.stringify({
           question: finalQuestion,
           session_id: sessionId,
+          dataset_id: selectedDatasetId,
         }),
       });
 
@@ -94,6 +130,32 @@ function App() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleDatasetChange(event) {
+    const newDatasetId = event.target.value;
+
+    setSelectedDatasetId(newDatasetId);
+
+    if (sessionId) {
+      try {
+        await fetch(`${API_URL}/session/reset`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+      } catch {
+        // Still reset local state even if backend reset fails.
+      }
+    }
+
+    setSessionId(null);
+    setQuestion("");
+    setResult(null);
+    setError("");
+    setCopiedSql(false);
   }
 
   async function resetSession() {
@@ -144,7 +206,35 @@ function App() {
             <Database size={18} />
             Ask your data
           </div>
+          <div className="dataset-selector">
+            <label htmlFor="dataset-select">Dataset</label>
 
+            <select
+              id="dataset-select"
+              value={selectedDatasetId}
+              onChange={handleDatasetChange}
+              disabled={loading || datasetsLoading}
+            >
+              {datasets.length === 0 && (
+                <option value="banking_voicebot">
+                  Banking Voicebot Conversations
+                </option>
+              )}
+
+              {datasets.map((dataset) => (
+                <option key={dataset.id} value={dataset.id}>
+                {dataset.name}
+                </option>
+              ))}
+            </select>
+
+            {datasets.length > 0 && (
+              <p>
+                {datasets.find((dataset) => dataset.id === selectedDatasetId)
+                ?.description || "Selected dataset"}
+              </p>
+            )}
+          </div>
           <form onSubmit={handleSubmit} className="ask-form">
             <textarea
               value={question}
@@ -358,6 +448,7 @@ function ResultStats({ result }) {
   const chartType = result.chart?.chart_type?.toUpperCase() || "CHART";
   const rowCount = result.row_count ?? result.rows?.length ?? 0;
   const columnCount = result.columns?.length ?? 0;
+  const datasetId = result.dataset_id || "default";
 
   return (
     <div className="stats-grid">
@@ -374,6 +465,11 @@ function ResultStats({ result }) {
       <div className="stat-card">
         <span>Visualization</span>
         <strong>{chartType}</strong>
+      </div>
+          
+      <div className="stat-card">
+        <span>Dataset</span>
+        <strong className="dataset-stat">{datasetId}</strong>
       </div>
     </div>
   );
